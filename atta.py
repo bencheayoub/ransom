@@ -36,6 +36,7 @@ class CombinedAttacker:
         print(f"[*] Waiting for victim connection...")
         print("[*] Press Ctrl+C to stop\n")
 
+        
         try:
             # Create TCP socket
             self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -357,3 +358,4 @@ if __name__ == "__main__":
 
     # Run main
     main()
+
