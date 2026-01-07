@@ -238,8 +238,7 @@ class CombinedAttacker:
                     pass
                 finally:
                     self.client_socket.settimeout(None)
-
-                
+ 
                 # Display response
                 if total_data:
                     try:
@@ -358,6 +357,7 @@ if __name__ == "__main__":
 
     # Run main
     main()
+
 
 
 
