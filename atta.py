@@ -13,6 +13,7 @@ from Crypto.Cipher import PKCS1_OAEP, AES
 from Crypto.Util import Counter
 from Crypto.Random import get_random_bytes
 
+
 class CombinedAttacker:
     def __init__(self, host='0.0.0.0', port=4444):
         self.host = host
@@ -357,6 +358,7 @@ if __name__ == "__main__":
 
     # Run main
     main()
+
 
 
 
