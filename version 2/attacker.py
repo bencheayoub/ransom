@@ -5,6 +5,7 @@ QUANTUM ENCRYPTION ATTACKER v2.0 - FIXED VERSION
 Robust C2 Server with Error Handling
 """
 
+
 import socket
 import sys
 import time
