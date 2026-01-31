@@ -3,7 +3,6 @@ Interface Integration Module
 Controls the ransom interface launch and closure - FIXED FILE PATH VERSION
 """
 
-
 import tkinter as tk
 from tkinter import messagebox, scrolledtext
 from PIL import Image, ImageTk
@@ -539,5 +538,6 @@ if __name__ == "__main__":
     print("Interface window created. Press Ctrl+C in terminal to exit.")
 
     root.mainloop()
+
 
 
